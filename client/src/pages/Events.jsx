@@ -5,22 +5,48 @@ import { Link } from "react-router-dom";
 import Countdown from "../components/Countdown";
 
 export default function Events() {
-	const [events, setEvents] = useState([]);
+	const [allEvents, setAllEvents] = useState([]); // raw list from API
 	const [locations, setLocations] = useState([]);
-	const [locationId, setLocationId] = useState("");
-	const [sort, setSort] = useState("soonest");
+	const [locationId, setLocationId] = useState(""); // "" = all
+	const [sort, setSort] = useState("soonest"); // soonest | latest
+	const [loading, setLoading] = useState(false);
 
+	// load locations once
 	useEffect(() => {
-		(async () => {
-			setLocations(await LocationsAPI.all());
-		})();
+		(async () => setLocations(await LocationsAPI.all()))();
 	}, []);
 
+	// load events whenever sort changes
 	useEffect(() => {
+		let alive = true;
 		(async () => {
-			setEvents(await EventsAPI.all({ locationId, sort }));
+			setLoading(true);
+			// Ask the server only for sorting; we’ll filter on the client
+			const events = await EventsAPI.all({ sort });
+			if (alive) {
+				setAllEvents(events);
+				setLoading(false);
+			}
 		})();
-	}, [locationId, sort]);
+		return () => {
+			alive = false;
+		};
+	}, [sort]);
+
+	// derive filtered/sorted list instantly when locationId changes
+	const visibleEvents = useMemo(() => {
+		const list = locationId
+			? allEvents.filter((e) => String(e.location_id) === String(locationId))
+			: allEvents.slice();
+
+		// extra safety: keep sort consistent even if server ignores it
+		list.sort((a, b) =>
+			sort === "latest"
+				? new Date(b.start_time) - new Date(a.start_time)
+				: new Date(a.start_time) - new Date(b.start_time)
+		);
+		return list;
+	}, [allEvents, locationId, sort]);
 
 	const locationMap = useMemo(
 		() => Object.fromEntries(locations.map((l) => [String(l.id), l.name])),
@@ -67,8 +93,10 @@ export default function Events() {
 				</label>
 			</div>
 
+			{loading && <p>Loading events…</p>}
+
 			<div className="stack">
-				{events.map((e) => {
+				{visibleEvents.map((e) => {
 					const past = new Date(e.start_time) < new Date();
 					return (
 						<article
@@ -98,6 +126,9 @@ export default function Events() {
 						</article>
 					);
 				})}
+				{!loading && visibleEvents.length === 0 && (
+					<p>No events match this filter.</p>
+				)}
 			</div>
 		</main>
 	);

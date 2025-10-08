@@ -1,55 +1,41 @@
-import React from 'react'
-import { useRoutes, Link } from 'react-router-dom'
-import Locations from './pages/Locations'
-import LocationEvents from './pages/LocationEvents'
-import Events from './pages/Events'
-import './App.css'
+// client/src/App.jsx
+import { useEffect, useState } from "react";
+import { LocationsAPI } from "./services/api";
+import HotspotMap from "./components/HotspotMap";
+import mapImg from "./assets/nyc-tennis-map.png";
 
-const App = () => {
-  let element = useRoutes([
-    {
-      path: '/',
-      element: <Locations />
-    },
-    {
-      path: '/echolounge',
-      element: <LocationEvents index={1} />
-    },
-    {
-      path: '/houseofblues',
-      element: <LocationEvents index={2} />
-    },
-    {
-      path: '/pavilion',
-      element: <LocationEvents index={3} />
-    },
-    {
-      path: '/americanairlines',
-      element: <LocationEvents index={4} />
-    },
-    {
-      path: '/events',
-      element: <Events />
-    }
-  ])
+export default function App() {
+	const [locations, setLocations] = useState([]);
 
-  return (
-    <div className='app'>
+	useEffect(() => {
+		(async () => setLocations(await LocationsAPI.all()))();
+	}, []);
 
-      <header className='main-header'>
-        <h1>UnityGrid Plaza</h1>
+	// Keep your exact coordinates
+	const positionsById = {
+		1: { top: 16, left: 69 }, // Astoria Park
+		2: { top: 43, left: 110 }, // Kissena Park
+		3: { top: 69, left: 86 }, // Juniper Valley Park
+		4: { top: 90, left: 93 }, // Forest Park
+	};
 
-        <div className='header-buttons'>
-          <Link to='/' role='button'>Home</Link>
-          <Link to='/events' role='button'>Events</Link>
-        </div>
-      </header>
+	const metaById = {
+		1: { borough: "Queens", note: "Astoria Park" },
+		2: { borough: "Queens", note: "Kissena Park" },
+		3: { borough: "Queens", note: "Juniper Valley Park" },
+		4: { borough: "Queens", note: "Forest Park" },
+	};
 
-      <main>
-        {element}
-      </main>
-    </div>
-  )
+	return (
+		<div className="page">
+			{/* Full-screen background map with hotspots */}
+			<HotspotMap
+				imgSrc={mapImg}
+				locations={locations}
+				positionsById={positionsById}
+				metaById={metaById}
+			/>
+			{/* Overlay nav removed */}
+		</div>
+	);
 }
-
-export default App
